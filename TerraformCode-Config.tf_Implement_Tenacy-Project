@@ -1,0 +1,186 @@
+#Notes: This program will perform/create following tasks on newly created tenancy/Project (vcn_oci_1);
+#1. Create Private subnets & ports
+#2. Create security group
+#3. Create router
+#4. Create FW instance
+#5. Create SW instane
+#6. Create DB/APP Compute instance
+
+
+#Note: A Tenant cannot create an external router without being granted admin privileges.
+
+#Change tenant name/usr/pwd details as provided from admin:
+#Code by: Mohammad Tahir
+
+
+#---------- Code Start:
+
+provider "openstack" {
+      auth_url = "http://192.168.86.221/identity"
+      user_name = "vcnusr-1"
+      tenant_name = "vcn_oci_1"
+      password = "password123"
+      domain_name = "Default"
+      region = "RegionOne"
+}
+
+
+
+# A Tenant cannot create an external router/subnets without being granted admin privileges.
+# Public/external subnets are usually provided by the Provider/Vendor.
+
+resource "openstack_networking_network_v2" "ociprivatenw" {
+  name           = "ociprivatenw"
+  admin_state_up = "true"
+  external = "false"
+  shared = "false"
+}
+
+resource "openstack_networking_subnet_v2" "ociprivatesubnet" {
+  network_id = "${openstack_networking_network_v2.ociprivatenw.id}"
+  cidr       = "10.0.0.0/24"
+  dns_nameservers = ["8.8.8.8", "4.4.4.4"]
+}
+
+resource "openstack_networking_port_v2" "oci_private_ports" {
+  count          = 2
+  name           = "${format("port-%02d", count.index + 1)}"
+  network_id     = "${openstack_networking_network_v2.ociprivatenw.id}"
+  admin_state_up = "true"
+}
+
+
+resource "openstack_networking_network_v2" "db_vlan_120" {
+  name           = "db_vlan_120"
+  admin_state_up = "true"
+  external = "false"
+  shared = "false"
+}
+
+resource "openstack_networking_subnet_v2" "db_vlan_subnet" {
+  network_id = "${openstack_networking_network_v2.db_vlan_120.id}"
+  cidr       = "192.168.0.0/24"
+  dns_nameservers = ["8.8.8.8", "4.4.4.4"]
+}
+
+resource "openstack_networking_port_v2" "db_vlan_ports" {
+  count          = 2
+  name           = "${format("port-%02d", count.index + 1)}"
+  network_id     = "${openstack_networking_network_v2.db_vlan_120.id}"
+  admin_state_up = "true"
+}
+
+
+resource "openstack_networking_network_v2" "app_vlan_100" {
+  name           = "app_vlan_100"
+  admin_state_up = "true"
+  
+  external = "false"
+  shared = "false"
+}
+
+resource "openstack_networking_subnet_v2" "app_vlan_subnet" {
+  network_id = "${openstack_networking_network_v2.app_vlan_100.id}"
+  cidr       = "172.16.0.0/24"
+  dns_nameservers = ["8.8.8.8", "4.4.4.4"]
+}
+
+resource "openstack_networking_port_v2" "app_vlan_ports" {
+  count          = 2
+  name           = "${format("port-%02d", count.index + 1)}"
+  network_id     = "${openstack_networking_network_v2.app_vlan_100.id}"
+  admin_state_up = "true"
+}
+
+
+resource "openstack_compute_secgroup_v2" "secgroup_oci" {
+  name        = "secgroup_oci"
+  description = "vcn specific policies"
+
+  rule {
+    from_port   = 22
+    to_port     = 22
+    ip_protocol = "tcp"
+    cidr        = "0.0.0.0/0"
+  }
+
+  rule {
+    from_port   = 80
+    to_port     = 80
+    ip_protocol = "tcp"
+    cidr        = "0.0.0.0/0"
+  }
+  rule {
+    from_port   = 443
+    to_port     = 443
+    ip_protocol = "tcp"
+    cidr        = "0.0.0.0/0"
+  }
+  rule {
+  from_port   = -1
+  to_port     = -1
+  ip_protocol = "icmp"
+  cidr        = "0.0.0.0/0"
+  }
+}
+
+resource "openstack_compute_instance_v2" "db-host-1" {
+       name = "db-host-1"
+       image_id = "7a25d1ea-7fe5-4da0-a88a-b48ffebfbb18"
+       flavor_id = "1"
+       security_groups = ["secgroup_oci"]
+       network {
+    name = "db_vlan_120"
+  }
+}
+resource "openstack_compute_instance_v2" "app-host-1" {
+       name = "app-host-1"
+       image_id = "7a25d1ea-7fe5-4da0-a88a-b48ffebfbb18"
+       flavor_id = "1"
+       security_groups = ["secgroup_oci"]
+       network {
+    name = "app_vlan_100"
+  }
+}
+resource "openstack_compute_instance_v2" "Arista_sw_1" {
+  name            = "Arista_sw_1"
+  image_id        = "761a3e99-5cbc-449c-b6d8-53779fd43398"
+  flavor_id       = "3"
+  security_groups = ["secgroup_oci"]
+
+  network {
+    name = "ociprivatenw"
+  }
+
+  network {
+    name = "db_vlan_120"
+  }
+  network {
+    name = "app_vlan_100"
+  }
+}
+resource "openstack_compute_instance_v2" "vSRX_1" {
+  name            = "vSRX_1"
+  image_id        = "da184b5d-7781-4862-a47a-9340c470589a"
+  flavor_id       = "3"
+  security_groups = ["secgroup_oci"]
+
+  network {
+    name = "ociprivatenw"
+  }
+
+  network {
+    name = "ocipublicnw"
+  }
+}
+resource "openstack_networking_router_v2" "oci_router_1" {
+  name                = "oci_router_1"
+  admin_state_up      = true
+  external_network_id = "6acb0b2a-bc72-4bb5-b4a6-398a0a694460"
+}
+resource "openstack_networking_router_interface_v2" "router_interface_1" {
+  router_id = "${openstack_networking_router_v2.oci_router_1.id}"
+  subnet_id = "2dd21c81-3890-4ca8-bb1e-d62e9de9d6fd"
+}
+
+
