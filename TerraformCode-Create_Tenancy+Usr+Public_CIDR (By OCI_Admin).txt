@@ -1,0 +1,638 @@
+#Notes: This program will create project/Tenancy in a Region, create user, assign a role to user:
+#Change tenant name/usr/pwd details as provided from admin:
+# A Tenant cannot create an external router/subnets without being granted admin privileges.
+# Public/external subnets are usually provided by the Provider/Vendor.
+#Code by: Mohammad Tahir
+
+
+#---------  Code Start:
+
+provider "openstack" {
+      auth_url = "http://192.168.86.221/identity"
+      user_name = "admin"
+      tenant_name = "admin"
+      password = "stack"
+      domain_name = "Default"
+      region = "RegionOne"
+}
+
+ resource "openstack_identity_project_v3" "vcn_oci_1" {
+  name = "vcn_oci_1"
+}
+
+resource "openstack_identity_user_v3" "vcnusr-1" {
+  name = "vcnusr-1"
+  default_project_id = "${openstack_identity_project_v3.vcn_oci_1.id}"
+  password = "password123"
+  domain_id = "default"
+}
+
+resource "openstack_identity_role_v3" "oci_members" {
+  name = "oci_members"
+}
+
+resource "openstack_identity_role_assignment_v3" "role_assignment_1" {
+  user_id = "${openstack_identity_user_v3.vcnusr-1.id}"
+  project_id = "${openstack_identity_project_v3.vcn_oci_1.id}"
+  role_id = "${openstack_identity_role_v3.oci_members.id}"
+}
+
+
+resource "openstack_networking_network_v2" "ocipublicnw" {
+  name           = "ocipublicnw"
+  tenant_id = "53d9c41f5a844bf6bbe2fb2c47f0c464"
+  admin_state_up = "true"
+  
+  external = "true"
+  shared = "true"
+}
+
+resource "openstack_networking_subnet_v2" "ocipublicsubnet" {
+  network_id = "${openstack_networking_network_v2.ocipublicnw.id}"
+  cidr       = "50.0.0.0/24"
+  dns_nameservers = ["8.8.8.8", "4.4.4.4"]
+}
+
+resource "openstack_networking_port_v2" "oci_public_ports" {
+  count          = 2
+  name           = "${format("port-%02d", count.index + 1)}"
+  network_id     = "${openstack_networking_network_v2.ocipublicnw.id}"
+  admin_state_up = "true"
+}
+
+
+resource "openstack_networking_network_v2" "isptransitnw" {
+  name           = "isptransitnw"
+  tenant_id = "53d9c41f5a844bf6bbe2fb2c47f0c464"
+  admin_state_up = "true"
+  
+  external = "true"
+  shared = "true"
+}
+
+
+resource "openstack_networking_subnet_v2" "isptransitsubnet" {
+  network_id = "${openstack_networking_network_v2.isptransitnw.id}"
+  cidr       = "40.0.0.0/24"
+  dns_nameservers = ["8.8.8.8", "4.4.4.4"]
+}
+
+resource "openstack_networking_port_v2" "oci_transit_ports" {
+  count          = 2
+  name           = "${format("port-%02d", count.index + 1)}"
+  network_id     = "${openstack_networking_network_v2.isptransitnw.id}"
+  admin_state_up = "true"
+}
+
+
+#---------  Code Ends:
+
+# At this point you should be able to login Openstack dashboard to new tenancy/project with new user (http://192.168.86.221/dashboard/auth/login/):
+
+
+# Program execution & output;  
+
+Terraform will perform the following actions:
+
+  # openstack_identity_project_v3.vcn_oci_1 will be created
+  + resource "openstack_identity_project_v3" "vcn_oci_1" {
+      + domain_id = (known after apply)
+      + enabled   = true
+      + id        = (known after apply)
+      + name      = "vcn_oci_1"
+      + parent_id = (known after apply)
+      + region    = (known after apply)
+    }
+
+  # openstack_identity_role_assignment_v3.role_assignment_1 will be created
+  + resource "openstack_identity_role_assignment_v3" "role_assignment_1" {
+      + id         = (known after apply)
+      + project_id = (known after apply)
+      + region     = (known after apply)
+      + role_id    = (known after apply)
+      + user_id    = (known after apply)
+    }
+
+  # openstack_identity_role_v3.oci_members will be created
+  + resource "openstack_identity_role_v3" "oci_members" {
+      + domain_id = (known after apply)
+      + id        = (known after apply)
+      + name      = "oci_members"
+      + region    = (known after apply)
+    }
+
+  # openstack_identity_user_v3.vcnusr-1 will be created
+  + resource "openstack_identity_user_v3" "vcnusr-1" {
+      + default_project_id = (known after apply)
+      + domain_id          = "default"
+      + enabled            = true
+      + id                 = (known after apply)
+      + name               = "vcnusr-1"
+      + password           = (sensitive value)
+      + region             = (known after apply)
+    }
+
+  # openstack_networking_network_v2.isptransitnw will be created
+  + resource "openstack_networking_network_v2" "isptransitnw" {
+      + admin_state_up          = true
+      + all_tags                = (known after apply)
+      + availability_zone_hints = (known after apply)
+      + dns_domain              = (known after apply)
+      + external                = true
+      + id                      = (known after apply)
+      + mtu                     = (known after apply)
+      + name                    = "isptransitnw"
+      + port_security_enabled   = (known after apply)
+      + qos_policy_id           = (known after apply)
+      + region                  = (known after apply)
+      + shared                  = false
+      + tenant_id               = (known after apply)
+      + transparent_vlan        = (known after apply)
+    }
+
+  # openstack_networking_network_v2.ocipublicnw will be created
+  + resource "openstack_networking_network_v2" "ocipublicnw" {
+      + admin_state_up          = true
+      + all_tags                = (known after apply)
+      + availability_zone_hints = (known after apply)
+      + dns_domain              = (known after apply)
+      + external                = true
+      + id                      = (known after apply)
+      + mtu                     = (known after apply)
+      + name                    = "ocipublicnw"
+      + port_security_enabled   = (known after apply)
+      + qos_policy_id           = (known after apply)
+      + region                  = (known after apply)
+      + shared                  = false
+      + tenant_id               = (known after apply)
+      + transparent_vlan        = (known after apply)
+    }
+
+  # openstack_networking_port_v2.oci_public_ports[0] will be created
+  + resource "openstack_networking_port_v2" "oci_public_ports" {
+      + admin_state_up         = true
+      + all_fixed_ips          = (known after apply)
+      + all_security_group_ids = (known after apply)
+      + all_tags               = (known after apply)
+      + device_id              = (known after apply)
+      + device_owner           = (known after apply)
+      + dns_assignment         = (known after apply)
+      + dns_name               = (known after apply)
+      + id                     = (known after apply)
+      + mac_address            = (known after apply)
+      + name                   = "port-01"
+      + network_id             = (known after apply)
+      + port_security_enabled  = (known after apply)
+      + qos_policy_id          = (known after apply)
+      + region                 = (known after apply)
+      + tenant_id              = (known after apply)
+
+      + binding {
+          + host_id     = (known after apply)
+          + profile     = (known after apply)
+          + vif_details = (known after apply)
+          + vif_type    = (known after apply)
+          + vnic_type   = (known after apply)
+        }
+    }
+
+  # openstack_networking_port_v2.oci_public_ports[1] will be created
+  + resource "openstack_networking_port_v2" "oci_public_ports" {
+      + admin_state_up         = true
+      + all_fixed_ips          = (known after apply)
+      + all_security_group_ids = (known after apply)
+      + all_tags               = (known after apply)
+      + device_id              = (known after apply)
+      + device_owner           = (known after apply)
+      + dns_assignment         = (known after apply)
+      + dns_name               = (known after apply)
+      + id                     = (known after apply)
+      + mac_address            = (known after apply)
+      + name                   = "port-02"
+      + network_id             = (known after apply)
+      + port_security_enabled  = (known after apply)
+      + qos_policy_id          = (known after apply)
+      + region                 = (known after apply)
+      + tenant_id              = (known after apply)
+
+      + binding {
+          + host_id     = (known after apply)
+          + profile     = (known after apply)
+          + vif_details = (known after apply)
+          + vif_type    = (known after apply)
+          + vnic_type   = (known after apply)
+        }
+    }
+
+  # openstack_networking_port_v2.oci_transit_ports[0] will be created
+  + resource "openstack_networking_port_v2" "oci_transit_ports" {
+      + admin_state_up         = true
+      + all_fixed_ips          = (known after apply)
+      + all_security_group_ids = (known after apply)
+      + all_tags               = (known after apply)
+      + device_id              = (known after apply)
+      + device_owner           = (known after apply)
+      + dns_assignment         = (known after apply)
+      + dns_name               = (known after apply)
+      + id                     = (known after apply)
+      + mac_address            = (known after apply)
+      + name                   = "port-01"
+      + network_id             = (known after apply)
+      + port_security_enabled  = (known after apply)
+      + qos_policy_id          = (known after apply)
+      + region                 = (known after apply)
+      + tenant_id              = (known after apply)
+
+      + binding {
+          + host_id     = (known after apply)
+          + profile     = (known after apply)
+          + vif_details = (known after apply)
+          + vif_type    = (known after apply)
+          + vnic_type   = (known after apply)
+        }
+    }
+
+  # openstack_networking_port_v2.oci_transit_ports[1] will be created
+  + resource "openstack_networking_port_v2" "oci_transit_ports" {
+      + admin_state_up         = true
+      + all_fixed_ips          = (known after apply)
+      + all_security_group_ids = (known after apply)
+      + all_tags               = (known after apply)
+      + device_id              = (known after apply)
+      + device_owner           = (known after apply)
+      + dns_assignment         = (known after apply)
+      + dns_name               = (known after apply)
+      + id                     = (known after apply)
+      + mac_address            = (known after apply)
+      + name                   = "port-02"
+      + network_id             = (known after apply)
+      + port_security_enabled  = (known after apply)
+      + qos_policy_id          = (known after apply)
+      + region                 = (known after apply)
+      + tenant_id              = (known after apply)
+
+      + binding {
+          + host_id     = (known after apply)
+          + profile     = (known after apply)
+          + vif_details = (known after apply)
+          + vif_type    = (known after apply)
+          + vnic_type   = (known after apply)
+        }
+    }
+
+  # openstack_networking_subnet_v2.isptransitsubnet will be created
+  + resource "openstack_networking_subnet_v2" "isptransitsubnet" {
+      + all_tags          = (known after apply)
+      + cidr              = "40.0.0.0/24"
+      + dns_nameservers   = [
+          + "8.8.8.8",
+          + "4.4.4.4",
+        ]
+      + enable_dhcp       = true
+      + gateway_ip        = (known after apply)
+      + id                = (known after apply)
+      + ip_version        = 4
+      + ipv6_address_mode = (known after apply)
+      + ipv6_ra_mode      = (known after apply)
+      + network_id        = (known after apply)
+      + no_gateway        = false
+      + region            = (known after apply)
+      + tenant_id         = (known after apply)
+
+      + allocation_pool {
+          + end   = (known after apply)
+          + start = (known after apply)
+        }
+
+      + allocation_pools {
+          + end   = (known after apply)
+          + start = (known after apply)
+        }
+    }
+
+  # openstack_networking_subnet_v2.ocipublicsubnet will be created
+  + resource "openstack_networking_subnet_v2" "ocipublicsubnet" {
+      + all_tags          = (known after apply)
+      + cidr              = "50.0.0.0/24"
+      + dns_nameservers   = [
+          + "8.8.8.8",
+          + "4.4.4.4",
+        ]
+      + enable_dhcp       = true
+      + gateway_ip        = (known after apply)
+      + id                = (known after apply)
+      + ip_version        = 4
+      + ipv6_address_mode = (known after apply)
+      + ipv6_ra_mode      = (known after apply)
+      + network_id        = (known after apply)
+      + no_gateway        = false
+      + region            = (known after apply)
+      + tenant_id         = (known after apply)
+
+      + allocation_pool {
+          + end   = (known after apply)
+          + start = (known after apply)
+        }
+
+      + allocation_pools {
+          + end   = (known after apply)
+          + start = (known after apply)
+        }
+    }
+
+Plan: 12 to add, 0 to change, 0 to destroy.
+
+------------------------------------------------------------------------
+
+Note: You didn't specify an "-out" parameter to save this plan, so Terraform
+can't guarantee that exactly these actions will be performed if
+"terraform apply" is subsequently run.
+
+tahiritian@eve-ng-openstack:/usr/local/bin/terraform-scripts$ sudo terraform apply
+
+An execution plan has been generated and is shown below.
+Resource actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # openstack_identity_project_v3.vcn_oci_1 will be created
+  + resource "openstack_identity_project_v3" "vcn_oci_1" {
+      + domain_id = (known after apply)
+      + enabled   = true
+      + id        = (known after apply)
+      + name      = "vcn_oci_1"
+      + parent_id = (known after apply)
+      + region    = (known after apply)
+    }
+
+  # openstack_identity_role_assignment_v3.role_assignment_1 will be created
+  + resource "openstack_identity_role_assignment_v3" "role_assignment_1" {
+      + id         = (known after apply)
+      + project_id = (known after apply)
+      + region     = (known after apply)
+      + role_id    = (known after apply)
+      + user_id    = (known after apply)
+    }
+
+  # openstack_identity_role_v3.oci_members will be created
+  + resource "openstack_identity_role_v3" "oci_members" {
+      + domain_id = (known after apply)
+      + id        = (known after apply)
+      + name      = "oci_members"
+      + region    = (known after apply)
+    }
+
+  # openstack_identity_user_v3.vcnusr-1 will be created
+  + resource "openstack_identity_user_v3" "vcnusr-1" {
+      + default_project_id = (known after apply)
+      + domain_id          = "default"
+      + enabled            = true
+      + id                 = (known after apply)
+      + name               = "vcnusr-1"
+      + password           = (sensitive value)
+      + region             = (known after apply)
+    }
+
+  # openstack_networking_network_v2.isptransitnw will be created
+  + resource "openstack_networking_network_v2" "isptransitnw" {
+      + admin_state_up          = true
+      + all_tags                = (known after apply)
+      + availability_zone_hints = (known after apply)
+      + dns_domain              = (known after apply)
+      + external                = true
+      + id                      = (known after apply)
+      + mtu                     = (known after apply)
+      + name                    = "isptransitnw"
+      + port_security_enabled   = (known after apply)
+      + qos_policy_id           = (known after apply)
+      + region                  = (known after apply)
+      + shared                  = false
+      + tenant_id               = (known after apply)
+      + transparent_vlan        = (known after apply)
+    }
+
+  # openstack_networking_network_v2.ocipublicnw will be created
+  + resource "openstack_networking_network_v2" "ocipublicnw" {
+      + admin_state_up          = true
+      + all_tags                = (known after apply)
+      + availability_zone_hints = (known after apply)
+      + dns_domain              = (known after apply)
+      + external                = true
+      + id                      = (known after apply)
+      + mtu                     = (known after apply)
+      + name                    = "ocipublicnw"
+      + port_security_enabled   = (known after apply)
+      + qos_policy_id           = (known after apply)
+      + region                  = (known after apply)
+      + shared                  = false
+      + tenant_id               = (known after apply)
+      + transparent_vlan        = (known after apply)
+    }
+
+  # openstack_networking_port_v2.oci_public_ports[0] will be created
+  + resource "openstack_networking_port_v2" "oci_public_ports" {
+      + admin_state_up         = true
+      + all_fixed_ips          = (known after apply)
+      + all_security_group_ids = (known after apply)
+      + all_tags               = (known after apply)
+      + device_id              = (known after apply)
+      + device_owner           = (known after apply)
+      + dns_assignment         = (known after apply)
+      + dns_name               = (known after apply)
+      + id                     = (known after apply)
+      + mac_address            = (known after apply)
+      + name                   = "port-01"
+      + network_id             = (known after apply)
+      + port_security_enabled  = (known after apply)
+      + qos_policy_id          = (known after apply)
+      + region                 = (known after apply)
+      + tenant_id              = (known after apply)
+
+      + binding {
+          + host_id     = (known after apply)
+          + profile     = (known after apply)
+          + vif_details = (known after apply)
+          + vif_type    = (known after apply)
+          + vnic_type   = (known after apply)
+        }
+    }
+
+  # openstack_networking_port_v2.oci_public_ports[1] will be created
+  + resource "openstack_networking_port_v2" "oci_public_ports" {
+      + admin_state_up         = true
+      + all_fixed_ips          = (known after apply)
+      + all_security_group_ids = (known after apply)
+      + all_tags               = (known after apply)
+      + device_id              = (known after apply)
+      + device_owner           = (known after apply)
+      + dns_assignment         = (known after apply)
+      + dns_name               = (known after apply)
+      + id                     = (known after apply)
+      + mac_address            = (known after apply)
+      + name                   = "port-02"
+      + network_id             = (known after apply)
+      + port_security_enabled  = (known after apply)
+      + qos_policy_id          = (known after apply)
+      + region                 = (known after apply)
+      + tenant_id              = (known after apply)
+
+      + binding {
+          + host_id     = (known after apply)
+          + profile     = (known after apply)
+          + vif_details = (known after apply)
+          + vif_type    = (known after apply)
+          + vnic_type   = (known after apply)
+        }
+    }
+
+  # openstack_networking_port_v2.oci_transit_ports[0] will be created
+  + resource "openstack_networking_port_v2" "oci_transit_ports" {
+      + admin_state_up         = true
+      + all_fixed_ips          = (known after apply)
+      + all_security_group_ids = (known after apply)
+      + all_tags               = (known after apply)
+      + device_id              = (known after apply)
+      + device_owner           = (known after apply)
+      + dns_assignment         = (known after apply)
+      + dns_name               = (known after apply)
+      + id                     = (known after apply)
+      + mac_address            = (known after apply)
+      + name                   = "port-01"
+      + network_id             = (known after apply)
+      + port_security_enabled  = (known after apply)
+      + qos_policy_id          = (known after apply)
+      + region                 = (known after apply)
+      + tenant_id              = (known after apply)
+
+      + binding {
+          + host_id     = (known after apply)
+          + profile     = (known after apply)
+          + vif_details = (known after apply)
+          + vif_type    = (known after apply)
+          + vnic_type   = (known after apply)
+        }
+    }
+
+  # openstack_networking_port_v2.oci_transit_ports[1] will be created
+  + resource "openstack_networking_port_v2" "oci_transit_ports" {
+      + admin_state_up         = true
+      + all_fixed_ips          = (known after apply)
+      + all_security_group_ids = (known after apply)
+      + all_tags               = (known after apply)
+      + device_id              = (known after apply)
+      + device_owner           = (known after apply)
+      + dns_assignment         = (known after apply)
+      + dns_name               = (known after apply)
+      + id                     = (known after apply)
+      + mac_address            = (known after apply)
+      + name                   = "port-02"
+      + network_id             = (known after apply)
+      + port_security_enabled  = (known after apply)
+      + qos_policy_id          = (known after apply)
+      + region                 = (known after apply)
+      + tenant_id              = (known after apply)
+
+      + binding {
+          + host_id     = (known after apply)
+          + profile     = (known after apply)
+          + vif_details = (known after apply)
+          + vif_type    = (known after apply)
+          + vnic_type   = (known after apply)
+        }
+    }
+
+  # openstack_networking_subnet_v2.isptransitsubnet will be created
+  + resource "openstack_networking_subnet_v2" "isptransitsubnet" {
+      + all_tags          = (known after apply)
+      + cidr              = "40.0.0.0/24"
+      + dns_nameservers   = [
+          + "8.8.8.8",
+          + "4.4.4.4",
+        ]
+      + enable_dhcp       = true
+      + gateway_ip        = (known after apply)
+      + id                = (known after apply)
+      + ip_version        = 4
+      + ipv6_address_mode = (known after apply)
+      + ipv6_ra_mode      = (known after apply)
+      + network_id        = (known after apply)
+      + no_gateway        = false
+      + region            = (known after apply)
+      + tenant_id         = (known after apply)
+
+      + allocation_pool {
+          + end   = (known after apply)
+          + start = (known after apply)
+        }
+
+      + allocation_pools {
+          + end   = (known after apply)
+          + start = (known after apply)
+        }
+    }
+
+  # openstack_networking_subnet_v2.ocipublicsubnet will be created
+  + resource "openstack_networking_subnet_v2" "ocipublicsubnet" {
+      + all_tags          = (known after apply)
+      + cidr              = "50.0.0.0/24"
+      + dns_nameservers   = [
+          + "8.8.8.8",
+          + "4.4.4.4",
+        ]
+      + enable_dhcp       = true
+      + gateway_ip        = (known after apply)
+      + id                = (known after apply)
+      + ip_version        = 4
+      + ipv6_address_mode = (known after apply)
+      + ipv6_ra_mode      = (known after apply)
+      + network_id        = (known after apply)
+      + no_gateway        = false
+      + region            = (known after apply)
+      + tenant_id         = (known after apply)
+
+      + allocation_pool {
+          + end   = (known after apply)
+          + start = (known after apply)
+        }
+
+      + allocation_pools {
+          + end   = (known after apply)
+          + start = (known after apply)
+        }
+    }
+
+Plan: 12 to add, 0 to change, 0 to destroy.
+
+Do you want to perform these actions?
+  Terraform will perform the actions described above.
+  Only 'yes' will be accepted to approve.
+
+  Enter a value: yes
+
+openstack_networking_network_v2.ocipublicnw: Creating...
+openstack_networking_network_v2.isptransitnw: Creating...
+openstack_identity_role_v3.oci_members: Creating...
+openstack_identity_project_v3.vcn_oci_1: Creating...
+openstack_identity_project_v3.vcn_oci_1: Creation complete after 1s [id=53d9c41f5a844bf6bbe2fb2c47f0c464]
+openstack_identity_role_v3.oci_members: Creation complete after 1s [id=fa4f8ba8fb2043b4967c22d0aa078c4d]
+openstack_identity_user_v3.vcnusr-1: Creating...
+openstack_identity_user_v3.vcnusr-1: Creation complete after 0s [id=f2bd9b21a56443468a3fe139c2189dad]
+openstack_identity_role_assignment_v3.role_assignment_1: Creating...
+openstack_identity_role_assignment_v3.role_assignment_1: Creation complete after 0s [id=/53d9c41f5a844bf6bbe2fb2c47f0c464//f2bd9b21a56443468a3fe139c2189dad/fa4f8ba8fb2043b4967c22d0aa078c4d]
+openstack_networking_network_v2.isptransitnw: Creation complete after 7s [id=6acb0b2a-bc72-4bb5-b4a6-398a0a694460]
+openstack_networking_port_v2.oci_transit_ports[1]: Creating...
+openstack_networking_port_v2.oci_transit_ports[0]: Creating...
+openstack_networking_subnet_v2.isptransitsubnet: Creating...
+openstack_networking_network_v2.ocipublicnw: Creation complete after 7s [id=2dd21c81-3890-4ca8-bb1e-d62e9de9d6fd]
+openstack_networking_port_v2.oci_public_ports[1]: Creating...
+openstack_networking_port_v2.oci_public_ports[0]: Creating...
+openstack_networking_subnet_v2.ocipublicsubnet: Creating...
+openstack_networking_port_v2.oci_public_ports[0]: Creation complete after 7s [id=c5d03b29-9f01-4e97-8523-54832b575d6f]
+openstack_networking_port_v2.oci_public_ports[1]: Creation complete after 7s [id=1dcf341b-a826-4819-abe1-4a5ed99dd0a5]
+openstack_networking_port_v2.oci_transit_ports[1]: Creation complete after 7s [id=14fd8a7a-db26-487f-9d7b-017ff6ef48d0]
+openstack_networking_port_v2.oci_transit_ports[0]: Creation complete after 7s [id=1cf7e2e8-76d4-496a-9d8f-e31022860ec7]
+openstack_networking_subnet_v2.isptransitsubnet: Creation complete after 7s [id=87887a80-eeb2-4757-aa53-7b32cbe6593b]
+openstack_networking_subnet_v2.ocipublicsubnet: Creation complete after 7s [id=3bb67477-ace2-4a84-83b3-3bcb9489c613]
+
+Apply complete! Resources: 12 added, 0 changed, 0 destroyed.
